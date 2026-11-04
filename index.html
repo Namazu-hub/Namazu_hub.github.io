@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#060c15" />
+  <meta name="description" content="地球を旅するシネマティックな CesiumJS ライブ壁紙。都市と山々へ、果てしないフライトを。" />
+  <title>ATLAS — Earth in Motion</title>
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://services.arcgisonline.com" crossorigin />
+  <link href="https://cdn.jsdelivr.net/npm/cesium@1.147.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/cesium@1.147.0/Build/Cesium/Cesium.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <div id="globe" role="img" aria-label="地球の衛星画像を描画する3D地球儀"></div>
+  <div class="vignette" aria-hidden="true"></div>
+  <div class="grain" aria-hidden="true"></div>
+
+  <div id="loading" class="loading">
+    <div class="loading-orbit"><span></span></div>
+    <p class="eyebrow">PREPARING YOUR JOURNEY</p>
+    <h1>ATLAS<span class="brand-dot">.</span></h1>
+    <p id="loading-copy">地球を読み込んでいます</p>
+  </div>
+
+  <div id="app" class="app is-loading">
+    <header class="top-bar">
+      <div class="brand"><span class="brand-icon">◌</span><span>ATLAS <span class="brand-lite">/ EARTH IN MOTION</span></span></div>
+      <div class="top-right"><span class="live-pulse"></span><span class="top-label">LIVE PLANET</span><span class="top-separator"></span><span id="local-time" class="top-time">--:-- UTC</span></div>
+    </header>
+
+    <main class="lower-third" aria-live="polite">
+      <div class="small-meta"><span id="chapter-number">01 / 16</span><span class="meta-line"></span><span id="category-label">CITY EXPLORATION</span></div>
+      <div class="destination-block">
+        <p class="destination-region" id="destination-region">JAPAN / EAST ASIA</p>
+        <h2 class="destination-title" id="destination-title">TOKYO</h2>
+        <p class="destination-description" id="destination-description">都市の光と、果てしない街並み。</p>
+      </div>
+      <div class="coords"><span class="coord-symbol">⌖</span> <span id="coordinates">35.6762° N &nbsp; 139.6503° E</span></div>
+    </main>
+
+    <div class="timeline-area">
+      <div class="timeline-head"><span id="phase-text">ORBITING THE EARTH</span><span id="next-text">NEXT DESTINATION · MT. FUJI</span></div>
+      <div class="timeline-rail"><span id="timeline-progress"></span></div>
+    </div>
+
+    <div class="controls" aria-label="壁紙操作">
+      <button id="prev" class="control-button" type="button" title="前の地点 (←)" aria-label="前の地点">
+        <svg viewBox="0 0 24 24"><path d="M18 5 9 12l9 7M9 5v14"/></svg>
+      </button>
+      <button id="play-pause" class="control-button control-primary" type="button" title="一時停止 / 再開 (Space)" aria-label="一時停止">
+        <svg id="pause-icon" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg>
+        <svg id="play-icon" viewBox="0 0 24 24" hidden><path d="m8 5 11 7-11 7V5Z"/></svg>
+      </button>
+      <button id="next" class="control-button" type="button" title="次の地点 (→)" aria-label="次の地点">
+        <svg viewBox="0 0 24 24"><path d="m6 5 9 7-9 7M15 5v14"/></svg>
+      </button>
+      <div class="control-divider"></div>
+      <button id="hud-toggle" class="control-button" type="button" title="表示の切替 (H)" aria-label="表示の切替">
+        <svg viewBox="0 0 24 24"><path d="M3 12s3.3-6 9-6 9 6 9 6-3.3 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+      </button>
+      <button id="settings-toggle" class="control-button" type="button" title="設定 (S)" aria-label="設定" aria-expanded="false">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-2 3.4-1.7-.6a8.5 8.5 0 0 1-2.1 1.2L14.8 22h-4l-.3-1.8A8.5 8.5 0 0 1 8.4 19l-1.7.6-2-3.4L6.1 15a8.8 8.8 0 0 1 0-2.5l-1.4-1.1 2-3.4 1.7.6a8.5 8.5 0 0 1 2.1-1.2L10.8 5h4l.3 2.4a8.5 8.5 0 0 1 2.1 1.2l1.7-.6 2 3.4-1.4 1.1a8.8 8.8 0 0 1-.1 2.5Z" transform="translate(-.8 -1.5) scale(1.0667)"/></svg>
+      </button>
+      <button id="fullscreen" class="control-button" type="button" title="全画面 (F)" aria-label="全画面">
+        <svg viewBox="0 0 24 24"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>
+      </button>
+    </div>
+
+    <aside id="settings" class="settings-panel" aria-label="設定" aria-hidden="true">
+      <div class="settings-title-row"><div><span class="eyebrow">PERSONALIZE THE JOURNEY</span><h3>Settings</h3></div><button id="settings-close" class="close-button" aria-label="閉じる">×</button></div>
+      <label class="setting-label" for="speed">フライトの速さ <span id="speed-value">1.0×</span></label>
+      <input id="speed" type="range" min="0.5" max="2" step="0.25" value="1" />
+      <label class="setting-label" for="quality">描画解像度 <span id="quality-value">85%</span></label>
+      <input id="quality" type="range" min="0.5" max="1" step="0.05" value="0.85" />
+      <label class="setting-label" for="fps">最大フレームレート</label>
+      <select id="fps"><option value="24">24 fps · 省電力</option><option value="30" selected>30 fps · 標準</option><option value="60">60 fps · なめらか</option></select>
+      <label class="check-row"><input id="show-labels" type="checkbox" checked/><span>地名と情報を表示</span></label>
+      <label class="check-row"><input id="shuffle" type="checkbox"/><span>訪問順をシャッフル</span></label>
+      <div class="settings-rule"></div>
+      <label class="setting-label" for="ion-token">Cesium ion トークン <span>任意</span></label>
+      <input id="ion-token" type="password" spellcheck="false" autocomplete="off" placeholder="立体地形を利用する場合のみ" />
+      <label class="check-row"><input id="terrain" type="checkbox"/><span>3D地形を有効にする（トークン必須）</span></label>
+      <button id="apply-terrain" class="apply-button" type="button">地形設定を適用</button>
+      <p id="terrain-message" class="terrain-message">トークンはこの端末内に保存され、GitHubには送信されません。</p>
+      <div class="settings-rule"></div>
+      <p class="settings-footnote">Space: 停止・再開 / ← →: 移動 / H: 情報表示 / S: 設定 / F: 全画面</p>
+      <p class="settings-footnote">Lively Wallpaper 用 URL: <code>?wallpaper=1</code></p>
+    </aside>
+
+    <div id="toast" class="toast" role="status"></div>
+    <div class="copyright">IMAGERY © ESRI & CONTRIBUTORS <span>·</span> POWERED BY CESIUMJS</div>
+  </div>
+  <noscript><div class="noscript">JavaScript を有効にしてください。CesiumJS は WebGL 対応ブラウザで動作します。</div></noscript>
+</body>
+</html>
