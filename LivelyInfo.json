@@ -1,0 +1,12 @@
+{
+  "AppVersion": "1.0.0",
+  "Title": "ATLAS — Earth in Motion",
+  "Desc": "CesiumJS cinematic globe, flying between cities and mountains on an infinite loop.",
+  "Author": "Namazu-hub",
+  "License": "MIT (third-party imagery/data have separate terms)",
+  "Contact": "",
+  "Type": 1,
+  "FileName": "index.html",
+  "Arguments": "",
+  "IsAbsolutePath": false
+}
