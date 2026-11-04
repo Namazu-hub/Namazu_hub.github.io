@@ -9,7 +9,7 @@ CesiumJS を使った、都市と大自然を繰り返し巡る **シネマテ�
 GitHub Pages などの静的ホスティングで `index.html` を公開し、Lively Wallpaper の **「壁紙を追加」→「URLを入力」** に次の URL を指定します。
 
 ```
-https://your-username.github.io/atlas-wallpaper/?wallpaper=1
+https://namazu-hub.github.io/Namazu_hub.github.io/?wallpaper=1
 ```
 
 `?wallpaper=1` では操作ボタンを隠し、マウスでの地球操作を無効にします。シーンは自動で続きます。
@@ -19,6 +19,8 @@ https://your-username.github.io/atlas-wallpaper/?wallpaper=1
 フォルダ内で `python -m http.server 8000` を実行し、`http://localhost:8000/?wallpaper=1` を開いてください。ブラウザから `file://` で直接開くより HTTP サーバーを推奨します。インターネットへの接続は衛星画像と CesiumJS の読み込みに必要です。
 
 ## 再生仕様
+
+**v2：カットなしのカメラ移動**。宇宙視点・ズームイン・低空周回・ズームアウトを1台のカメラでつなぎ、地球を突き抜けない球面経路と滑らかな高度補間を使用しています。地点送りも宇宙を経由して移動し、映像の瞬間的な切り替えを防ぎます。
 
 **宇宙視点から地球を回転 → 次の目的地へズームイン → 目的地をゆっくり周回 → 宇宙へズームアウト → 次へ移動** を無限に繰り返します。都市と山岳・自然風景は交互に配置しています。
 
@@ -65,7 +67,7 @@ Cesium ion の無料アカウント等でアクセストークンを取得し、
 ## GitHub Pages 公開
 
 1. 公開リポジトリを作成し、このフォルダのファイルをリポジトリ直下にアップロードします。
-2. GitHub の `Settings → Pages → Build and deployment → Deploy from a branch` で `main` と `/ (root)` を選びます。
+2. GitHub の `Settings → Pages → Build and deployment → GitHub Actions` を選択します。`.github/workflows/deploy.yml` により自動公開されます。
 3. `https://<username>.github.io/<repo>/?wallpaper=1` を Lively Wallpaper に指定します。
 
 ## License
