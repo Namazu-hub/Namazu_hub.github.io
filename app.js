@@ -58,8 +58,8 @@
   let viewer;
   const runtime = {
     stage: 'globe', stageElapsed: 0, stageDuration: 5.5,
-    flight: null, flightSerial: 0, paused: false, hiddenPause: false,
-    index: 0, globeLongitude: 120, nearHeading: 0,
+    transition: null, pose: null, pendingIndex: null, manualSkip: false, paused: false, hiddenPause: false,
+    index: 0, globeLongitude: 120, globeLatitude: 23, nearHeading: 0,
     lastFrame: 0, toastTimer: null, shuttingDown: false,
     sequence: PLACES.map((_, i) => i),
     manualHud: bare || !config.labels
@@ -111,60 +111,130 @@
     runtime.stageDuration = duration ?? phaseDuration(stage);
     updateUI();
   }
-  function cancelFlight() {
-    runtime.flightSerial++;
-    if (viewer) viewer.camera.cancelFlight();
-    runtime.flight = null;
+  // A single world-coordinate camera timeline avoids jumps between chapters.
+  const ORBIT_ALTITUDE = 18400000;
+  function axesAt(lon, lat) {
+    const p = inRadians(lat), l = inRadians(lon);
+    const cp = Math.cos(p), sp = Math.sin(p), cl = Math.cos(l), sl = Math.sin(l);
+    return {
+      east: new C.Cartesian3(-sl,cl,0),
+      north: new C.Cartesian3(-sp*cl,-sp*sl,cp),
+      up: new C.Cartesian3(cp*cl,cp*sl,sp)
+    };
   }
-  function stopAndResetCamera() {
-    cancelFlight();
-    // lookAt changes the reference transform; revert before free camera flights.
-    viewer.camera.lookAtTransform(C.Matrix4.IDENTITY);
+  function unit(v) { return C.Cartesian3.normalize(v,new C.Cartesian3()); }
+  function orientPose(position, focus, directionHint, upHint) {
+    const direction=unit(directionHint);
+    let up=C.Cartesian3.subtract(upHint,C.Cartesian3.multiplyByScalar(direction,C.Cartesian3.dot(upHint,direction),new C.Cartesian3()),new C.Cartesian3());
+    if(C.Cartesian3.magnitudeSquared(up)<1e-8) {
+      const other=Math.abs(direction.z)<.95?C.Cartesian3.UNIT_Z:C.Cartesian3.UNIT_X;
+      up=C.Cartesian3.subtract(other,C.Cartesian3.multiplyByScalar(direction,C.Cartesian3.dot(other,direction),new C.Cartesian3()),new C.Cartesian3());
+    }
+    const right=unit(C.Cartesian3.cross(direction,up,new C.Cartesian3()));
+    up=unit(C.Cartesian3.cross(right,direction,new C.Cartesian3()));
+    return {position,focus,direction,up};
   }
-  function flyToTarget(seconds) {
-    const target = placeAt(runtime.index);
-    const serial = ++runtime.flightSerial;
-    const duration = Math.max(.5, seconds);
-    runtime.flight = { type: 'approach', remaining: duration };
-    viewer.camera.lookAtTransform(C.Matrix4.IDENTITY);
-    viewer.camera.flyToBoundingSphere(new C.BoundingSphere(cartesian(target), 0), {
-      offset: targetHpr(target, target.heading),
-      duration,
-      easingFunction: C.EasingFunction.SINUSOIDAL_IN_OUT,
-      complete: () => {
-        if (serial !== runtime.flightSerial || runtime.paused) return;
-        runtime.flight = null;
-        runtime.nearHeading = target.heading;
-        setStage('near');
-      },
-      cancel: () => {}
-    });
+  function makePose(position,focus,upHint) {
+    return orientPose(position,focus,C.Cartesian3.subtract(focus,position,new C.Cartesian3()),upHint);
   }
-  function beginApproach(seconds = phaseDuration('approach')) {
-    setStage('approach', seconds);
-    flyToTarget(seconds);
+  function globePose(lon,lat) {
+    return makePose(C.Cartesian3.fromDegrees(lon,lat,ORBIT_ALTITUDE),C.Cartesian3.ZERO,axesAt(lon,lat).north);
   }
-  function beginDepart(seconds = phaseDuration('depart')) {
-    const target = placeAt(runtime.index);
-    setStage('depart', seconds);
-    viewer.camera.lookAtTransform(C.Matrix4.IDENTITY);
-    const serial = ++runtime.flightSerial;
-    runtime.flight = {type: 'depart', remaining: seconds};
-    viewer.camera.flyTo({
-      destination: C.Cartesian3.fromDegrees(target.lon, target.lat, 18400000),
-      orientation: { heading: 0, pitch: -C.Math.PI_OVER_TWO, roll: 0 },
-      duration: Math.max(.5, seconds),
-      easingFunction: C.EasingFunction.SINUSOIDAL_IN_OUT,
-      complete: () => {
-        if (serial !== runtime.flightSerial || runtime.paused) return;
-        runtime.flight = null;
-        runtime.globeLongitude = target.lon;
-        runtime.index = (runtime.index + 1) % PLACES.length;
-        updateDestination();
-        setStage('globe');
-      },
-      cancel: () => {}
-    });
+  function nearPose(target,heading) {
+    const a=axesAt(target.lon,target.lat),h=inRadians(heading),p=inRadians(target.pitch);
+    const horizontal=Math.cos(p)*target.range;
+    const offset=C.Cartesian3.add(
+      C.Cartesian3.add(
+        C.Cartesian3.multiplyByScalar(a.east,-Math.sin(h)*horizontal,new C.Cartesian3()),
+        C.Cartesian3.multiplyByScalar(a.north,-Math.cos(h)*horizontal,new C.Cartesian3()),
+        new C.Cartesian3()),
+      C.Cartesian3.multiplyByScalar(a.up,-Math.sin(p)*target.range,new C.Cartesian3()),new C.Cartesian3());
+    const focus=cartesian(target);
+    return makePose(C.Cartesian3.add(focus,offset,new C.Cartesian3()),focus,a.up);
+  }
+  function setPose(pose) {
+    runtime.pose=pose;
+    viewer.camera.setView({destination:pose.position,orientation:{direction:pose.direction,up:pose.up}});
+  }
+  function smootherStep(x) {
+    const t=clamp(x,0,1);
+    return t*t*t*(t*(t*6-15)+10);
+  }
+  function greatCircle(a,b,t) {
+    const d=clamp(C.Cartesian3.dot(a,b),-1,1);
+    if(d>.9999)return unit(C.Cartesian3.lerp(a,b,t,new C.Cartesian3()));
+    if(d<-.9999){
+      let axis=C.Cartesian3.cross(a,C.Cartesian3.UNIT_Z,new C.Cartesian3());
+      if(C.Cartesian3.magnitudeSquared(axis)<1e-8)axis=C.Cartesian3.cross(a,C.Cartesian3.UNIT_X,new C.Cartesian3());
+      const tangent=unit(axis);
+      return unit(C.Cartesian3.add(
+        C.Cartesian3.multiplyByScalar(a,Math.cos(Math.PI*t),new C.Cartesian3()),
+        C.Cartesian3.multiplyByScalar(tangent,Math.sin(Math.PI*t),new C.Cartesian3()),
+        new C.Cartesian3()));
+    }
+    const omega=Math.acos(d),denom=Math.sin(omega);
+    return unit(C.Cartesian3.add(
+      C.Cartesian3.multiplyByScalar(a,Math.sin((1-t)*omega)/denom,new C.Cartesian3()),
+      C.Cartesian3.multiplyByScalar(b,Math.sin(t*omega)/denom,new C.Cartesian3()),
+      new C.Cartesian3()));
+  }
+  function transitionPose(flight,progress) {
+    if(progress<=0)return flight.from;
+    if(progress>=1)return flight.to;
+    const t=smootherStep(progress);
+    const c0=C.Cartographic.fromCartesian(flight.from.position);
+    const c1=C.Cartographic.fromCartesian(flight.to.position);
+    const a=axesAt(C.Math.toDegrees(c0.longitude),C.Math.toDegrees(c0.latitude)).up;
+    const b=axesAt(C.Math.toDegrees(c1.longitude),C.Math.toDegrees(c1.latitude)).up;
+    const arc=greatCircle(a,b,t);
+    const lon=Math.atan2(arc.y,arc.x), lat=Math.atan2(arc.z,Math.hypot(arc.x,arc.y));
+    const h0=Math.max(0,c0.height),h1=Math.max(0,c1.height);
+    const height=Math.exp((1-t)*Math.log(h0+10000)+t*Math.log(h1+10000))-10000;
+    const position=C.Cartesian3.fromRadians(lon,lat,Math.max(0,height));
+    const focus=C.Cartesian3.lerp(flight.from.focus,flight.to.focus,t,new C.Cartesian3());
+    // The rotating local east/north/up frame follows the globe throughout a flight.
+    const startAxes=axesAt(C.Math.toDegrees(c0.longitude),C.Math.toDegrees(c0.latitude));
+    const endAxes=axesAt(C.Math.toDegrees(c1.longitude),C.Math.toDegrees(c1.latitude));
+    const pathAxes=axesAt(C.Math.toDegrees(lon),C.Math.toDegrees(lat));
+    const local=(v,ax)=>new C.Cartesian3(C.Cartesian3.dot(v,ax.east),C.Cartesian3.dot(v,ax.north),C.Cartesian3.dot(v,ax.up));
+    const world=(v,ax)=>C.Cartesian3.add(
+      C.Cartesian3.add(
+        C.Cartesian3.multiplyByScalar(ax.east,v.x,new C.Cartesian3()),
+        C.Cartesian3.multiplyByScalar(ax.north,v.y,new C.Cartesian3()),new C.Cartesian3()),
+      C.Cartesian3.multiplyByScalar(ax.up,v.z,new C.Cartesian3()),new C.Cartesian3());
+    const direction=world(C.Cartesian3.lerp(local(flight.from.direction,startAxes),local(flight.to.direction,endAxes),t,new C.Cartesian3()),pathAxes);
+    const upHint=world(C.Cartesian3.lerp(local(flight.from.up,startAxes),local(flight.to.up,endAxes),t,new C.Cartesian3()),pathAxes);
+    return orientPose(position,focus,direction,upHint);
+  }
+  function beginApproach(seconds=phaseDuration('approach')){
+    runtime.transition={kind:'approach',from:runtime.pose,to:nearPose(placeAt(runtime.index),placeAt(runtime.index).heading)};
+    setStage('approach',Math.max(.5,seconds));
+  }
+  function beginDepart(seconds=phaseDuration('depart')){
+    const c=C.Cartographic.fromCartesian(runtime.pose.position);
+    const lon=C.Math.toDegrees(c.longitude),lat=C.Math.toDegrees(c.latitude);
+    runtime.globeLongitude=lon;runtime.globeLatitude=lat;
+    runtime.transition={kind:'depart',from:runtime.pose,to:globePose(lon,lat)};
+    setStage('depart',Math.max(.5,seconds));
+  }
+  function completeTransition(){
+    const kind=runtime.transition.kind;
+    setPose(runtime.transition.to);
+    runtime.transition=null;
+    if(kind==='approach'){
+      runtime.nearHeading=placeAt(runtime.index).heading;
+      setStage('near');
+    }else{
+      if(runtime.pendingIndex!==null){
+        runtime.index=runtime.pendingIndex;
+        runtime.pendingIndex=null;
+      }else{
+        runtime.index=(runtime.index+1)%PLACES.length;
+      }
+      updateDestination();
+      setStage('globe',runtime.manualSkip?2.5/config.speed:phaseDuration('globe'));
+      runtime.manualSkip=false;
+    }
   }
   function shuffleOrder() {
     const keep = runtime.sequence[runtime.index];
@@ -178,66 +248,58 @@
     if (runtime.index === -1) runtime.index = 0;
     updateDestination();
   }
-  function jumpTo(newIndex) {
-    if (!viewer) return;
-    stopAndResetCamera();
-    runtime.index = (newIndex + PLACES.length) % PLACES.length;
-    updateDestination();
-    beginApproach(Math.max(3, 8 / config.speed));
-    if (runtime.paused) { runtime.paused = false; updateUI(); }
-  }
-  function pause() {
-    if (runtime.paused || !viewer) return;
-    if (runtime.flight) {
-      const remaining = Math.max(1, runtime.stageDuration - runtime.stageElapsed);
-      const type = runtime.flight.type;
-      cancelFlight();
-      runtime.flight = {type, remaining};
+  function jumpTo(newIndex){
+    if(!viewer)return;
+    if(runtime.paused)resume();
+    const index=(newIndex+PLACES.length)%PLACES.length;
+    runtime.manualSkip=true;
+    if(runtime.stage==='globe'){
+      runtime.index=index;runtime.pendingIndex=null;
+      updateDestination();
+      beginApproach(Math.max(4,8/config.speed));
+    }else{
+      runtime.pendingIndex=index;
+      if(runtime.stage!=='depart')beginDepart(Math.max(4,6/config.speed));
     }
-    runtime.paused = true;
-    viewer.clock.shouldAnimate = false;
+  }
+  function pause(){
+    if(runtime.paused||!viewer)return;
+    runtime.paused=true;
+    viewer.clock.shouldAnimate=false;
+    runtime.lastFrame=0;
     updateUI();
   }
-  function resume() {
-    if (!runtime.paused || !viewer) return;
-    runtime.paused = false;
-    viewer.clock.shouldAnimate = true;
-    if (runtime.flight) {
-      const {type, remaining} = runtime.flight;
-      runtime.flight = null;
-      runtime.stageElapsed = 0;
-      runtime.stageDuration = remaining;
-      if (type === 'approach') flyToTarget(remaining);
-      if (type === 'depart') beginDepart(remaining);
-    }
-    runtime.lastFrame = 0;
+  function resume(){
+    if(!runtime.paused||!viewer)return;
+    runtime.paused=false;
+    viewer.clock.shouldAnimate=true;
+    runtime.lastFrame=0;
     updateUI();
   }
-  function togglePause() { runtime.paused ? resume() : pause(); }
-  function animateFrame(timestamp) {
-    if (runtime.shuttingDown) return;
+  function togglePause(){runtime.paused?resume():pause();}
+  function animateFrame(timestamp){
+    if(runtime.shuttingDown)return;
     requestAnimationFrame(animateFrame);
-    if (!viewer) return;
-    if (!runtime.lastFrame) runtime.lastFrame = timestamp;
-    const dt = clamp((timestamp - runtime.lastFrame)/1000,0,.08);
-    runtime.lastFrame = timestamp;
-    if (runtime.paused || document.hidden) return;
-    runtime.stageElapsed += dt;
-    if (runtime.stage === 'globe') {
-      runtime.globeLongitude += dt * 1.1 * config.speed;
-      if (runtime.globeLongitude > 180) runtime.globeLongitude -= 360;
-      viewer.camera.setView({
-        destination: C.Cartesian3.fromDegrees(runtime.globeLongitude, 23, 18400000),
-        orientation: { heading: 0, pitch: -C.Math.PI_OVER_TWO, roll: 0 }
-      });
-      if (runtime.stageElapsed >= runtime.stageDuration) beginApproach();
-    } else if (runtime.stage === 'near') {
-      const target = placeAt(runtime.index);
-      runtime.nearHeading += dt * (4.5 * config.speed); // degrees per second
-      viewer.camera.lookAt(cartesian(target), targetHpr(target, runtime.nearHeading));
-      if (runtime.stageElapsed >= runtime.stageDuration) beginDepart();
+    if(!viewer)return;
+    if(!runtime.lastFrame)runtime.lastFrame=timestamp;
+    const dt=clamp((timestamp-runtime.lastFrame)/1000,0,.08);
+    runtime.lastFrame=timestamp;
+    if(runtime.paused||document.hidden)return;
+    runtime.stageElapsed+=dt;
+    if(runtime.stage==='globe'){
+      runtime.globeLongitude+=dt*1.1*config.speed;
+      if(runtime.globeLongitude>180)runtime.globeLongitude-=360;
+      setPose(globePose(runtime.globeLongitude,runtime.globeLatitude));
+      if(runtime.stageElapsed>=runtime.stageDuration)beginApproach();
+    }else if(runtime.stage==='near'){
+      runtime.nearHeading+=dt*4.5*config.speed;
+      setPose(nearPose(placeAt(runtime.index),runtime.nearHeading));
+      if(runtime.stageElapsed>=runtime.stageDuration)beginDepart();
+    }else if(runtime.transition){
+      const progress=clamp(runtime.stageElapsed/runtime.stageDuration,0,1);
+      setPose(transitionPose(runtime.transition,progress));
+      if(progress>=1)completeTransition();
     }
-    // The native Cesium flights run in the scene animation system.
     updateUI();
   }
 
@@ -395,10 +457,7 @@
       viewer.scene.fog.enabled = true;
       viewer.scene.backgroundColor = C.Color.fromCssColorString('#02060d');
       viewer.scene.screenSpaceCameraController.enableInputs = !wallpaper;
-      viewer.camera.setView({
-        destination: C.Cartesian3.fromDegrees(runtime.globeLongitude,23,18400000),
-        orientation:{heading:0,pitch:-C.Math.PI_OVER_TWO,roll:0}
-      });
+      setPose(globePose(runtime.globeLongitude,runtime.globeLatitude));
       if (config.shuffle) shuffleOrder();
       else updateDestination();
       applyVisualConfig();
