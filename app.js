@@ -12,22 +12,46 @@
   // Each target is a visible viewpoint, not a precise footfall or route.
   // range is the near-view *slant distance* (meters) to the target.
   const PLACES = [
-    { name: 'TOKYO',       region: 'JAPAN / EAST ASIA',              type: 'CITY',   lon: 139.6503, lat: 35.6762, altitude: 30,   range: 38000,  heading: 35,  pitch: -47, description: '都市の光と、果てしない街並み。' },
-    { name: 'MT. FUJI',    region: 'JAPAN / HONSHU',                 type: 'NATURE', lon: 138.7274, lat: 35.3606, altitude: 3776, range: 58000,  heading: 35,  pitch: -38, description: '雲の上にそびえる、孤高の成層火山。' },
-    { name: 'NEW YORK',    region: 'UNITED STATES / NORTH AMERICA',type: 'CITY',   lon: -73.9857,lat: 40.7484, altitude: 20,   range: 26000,  heading: 25,  pitch: -48, description: '島の上に伸びる、幾何学的な大都市。' },
-    { name: 'EVEREST',     region: 'NEPAL / HIMALAYAS',             type: 'NATURE', lon: 86.9250, lat: 27.9881, altitude: 8849, range: 90000,  heading: 55,  pitch: -35, description: '世界の屋根へ。ヒマラヤの最高峰。' },
-    { name: 'PARIS',       region: 'FRANCE / WESTERN EUROPE',       type: 'CITY',   lon: 2.3522,  lat: 48.8566, altitude: 35,   range: 25000,  heading: -30, pitch: -52, description: 'セーヌ河畔に広がる、歴史と都市の模様。' },
-    { name: 'MATTERHORN',  region: 'SWITZERLAND / THE ALPS',        type: 'NATURE', lon: 7.6586,  lat: 45.9763, altitude: 4478, range: 46000,  heading: -35, pitch: -35, description: 'アルプスの空を切り取る、鋭い山容。' },
-    { name: 'SINGAPORE',   region: 'SINGAPORE / SOUTHEAST ASIA',    type: 'CITY',   lon: 103.8519,lat: 1.2903,  altitude: 30,   range: 28000,  heading: 35,  pitch: -51, description: '海と街が交わる、赤道の都市国家。' },
-    { name: 'GRAND CANYON',region:'UNITED STATES / ARIZONA',        type: 'NATURE', lon:-112.1401,lat: 36.0544, altitude: 2200, range: 105000, heading: -65, pitch: -36, description: '長い歳月が刻んだ、大地の断面。' },
-    { name: 'HONG KONG',   region: 'CHINA / SOUTH CHINA SEA',       type: 'CITY',   lon: 114.1694,lat: 22.3193, altitude: 50,   range: 27000,  heading: 30,  pitch: -46, description: '山と海のあいだに密集する摩天楼。' },
-    { name: 'KILIMANJARO', region: 'TANZANIA / EAST AFRICA',        type: 'NATURE', lon: 37.3556, lat: -3.0674, altitude: 5895, range: 85000,  heading: -40, pitch: -34, description: 'アフリカの大地から立ち上がる独立峰。' },
-    { name: 'ISTANBUL',    region: 'TÜRKIYE / BOSPHORUS',           type: 'CITY',   lon: 28.9784, lat: 41.0082, altitude: 40,   range: 45000,  heading: -15, pitch: -50, description: '二つの大陸をつなぐ、青い海峡。' },
-    { name: 'MACHU PICCHU',region: 'PERU / THE ANDES',             type: 'NATURE', lon: -72.5450,lat: -13.1631,altitude: 2430, range: 30000,  heading: 60,  pitch: -37, description: 'アンデスの尾根に残る、天空の遺跡。' },
-    { name: 'DUBAI',       region: 'UNITED ARAB EMIRATES / GULF',  type: 'CITY',   lon: 55.2708, lat: 25.2048, altitude: 15,   range: 42000,  heading: 20,  pitch: -52, description: '砂漠と海を描き直した、未来都市。' },
-    { name: 'AORAKI',      region: 'NEW ZEALAND / SOUTHERN ALPS',  type: 'NATURE', lon: 170.1418,lat: -43.5950,altitude: 3724, range: 50000,  heading: 45,  pitch: -37, description: '氷河に抱かれた、南半球の山岳地帯。' },
-    { name: 'ROME',        region: 'ITALY / SOUTHERN EUROPE',       type: 'CITY',   lon: 12.4964, lat: 41.9028, altitude: 35,   range: 26000,  heading: -45, pitch: -50, description: '二千年の時間が折り重なる永遠の都。' },
-    { name: 'CAPE TOWN',   region: 'SOUTH AFRICA / ATLANTIC',      type: 'NATURE', lon: 18.4107, lat: -33.9628,altitude: 1085, range: 52000,  heading: -65, pitch: -38, description: 'テーブルマウンテンと大西洋の境界。' }
+    {"name": "TOKYO", "region": "JAPAN / EAST ASIA", "type": "CITY", "lon": 139.7454, "lat": 35.6586, "altitude": 30.0, "range": 2400, "heading": 35, "pitch": -62, "landmark": "東京タワー", "description": "芝公園と都心に囲まれた、赤い塔。"},
+    {"name": "MT. FUJI", "region": "JAPAN / HONSHU", "type": "NATURE", "lon": 138.7274, "lat": 35.3606, "altitude": 3776.0, "range": 18000, "heading": 35, "pitch": -45, "landmark": "富士山の火口", "description": "山頂の火口から裾野へ広がる稜線。"},
+    {"name": "NEW YORK", "region": "UNITED STATES / NORTH AMERICA", "type": "CITY", "lon": -73.9857, "lat": 40.7484, "altitude": 20.0, "range": 3200, "heading": 25, "pitch": -62, "landmark": "エンパイア・ステート・ビル", "description": "マンハッタンの格子状の街並み。"},
+    {"name": "EVEREST", "region": "NEPAL / HIMALAYAS", "type": "NATURE", "lon": 86.925, "lat": 27.9881, "altitude": 8849.0, "range": 25000, "heading": 55, "pitch": -45, "landmark": "エベレスト山頂", "description": "氷河と鋭い稜線が連なるヒマラヤ。"},
+    {"name": "PARIS", "region": "FRANCE / WESTERN EUROPE", "type": "CITY", "lon": 2.2945, "lat": 48.8583, "altitude": 35.0, "range": 2200, "heading": -30, "pitch": -62, "landmark": "エッフェル塔", "description": "セーヌ川とシャン・ド・マルス公園。"},
+    {"name": "MATTERHORN", "region": "SWITZERLAND / THE ALPS", "type": "NATURE", "lon": 7.6586, "lat": 45.9763, "altitude": 4478.0, "range": 12000, "heading": -35, "pitch": -45, "landmark": "マッターホルン", "description": "アルプスを象徴する、ピラミッド形の峰。"},
+    {"name": "SINGAPORE", "region": "SINGAPORE / SOUTHEAST ASIA", "type": "CITY", "lon": 103.8607, "lat": 1.2834, "altitude": 15.0, "range": 3000, "heading": 35, "pitch": -60, "landmark": "マリーナ・ベイ・サンズ", "description": "湾と庭園に囲まれた、三つのタワー。"},
+    {"name": "GRAND CANYON", "region": "UNITED STATES / ARIZONA", "type": "NATURE", "lon": -112.1401, "lat": 36.0544, "altitude": 2200.0, "range": 26000, "heading": -65, "pitch": -50, "landmark": "グランドキャニオン", "description": "コロラド川が刻んだ大峡谷。"},
+    {"name": "HONG KONG", "region": "CHINA / SOUTH CHINA SEA", "type": "CITY", "lon": 114.1652, "lat": 22.293, "altitude": 10.0, "range": 6500, "heading": 30, "pitch": -58, "landmark": "ビクトリア・ハーバー", "description": "香港島と九龍を隔てる港。"},
+    {"name": "KILIMANJARO", "region": "TANZANIA / EAST AFRICA", "type": "NATURE", "lon": 37.3556, "lat": -3.0674, "altitude": 5895.0, "range": 22000, "heading": -40, "pitch": -45, "landmark": "キボ峰の火口", "description": "アフリカの大地から立ち上がる独立峰。"},
+    {"name": "ISTANBUL", "region": "TÜRKIYE / BOSPHORUS", "type": "CITY", "lon": 28.9802, "lat": 41.0086, "altitude": 40.0, "range": 2200, "heading": -15, "pitch": -65, "landmark": "アヤソフィア", "description": "旧市街のドームと海峡を望む。"},
+    {"name": "MACHU PICCHU", "region": "PERU / THE ANDES", "type": "NATURE", "lon": -72.545, "lat": -13.1631, "altitude": 2430.0, "range": 5500, "heading": 60, "pitch": -60, "landmark": "マチュピチュ遺跡", "description": "アンデスの尾根に並ぶ石造遺跡。"},
+    {"name": "DUBAI", "region": "UNITED ARAB EMIRATES / GULF", "type": "CITY", "lon": 55.2744, "lat": 25.1972, "altitude": 15.0, "range": 3200, "heading": 20, "pitch": -65, "landmark": "ブルジュ・ハリファ", "description": "超高層塔を囲む人工湖と街区。"},
+    {"name": "AORAKI", "region": "NEW ZEALAND / SOUTHERN ALPS", "type": "NATURE", "lon": 170.1418, "lat": -43.595, "altitude": 3724.0, "range": 14000, "heading": 45, "pitch": -45, "landmark": "アオラキ／マウント・クック", "description": "氷河に抱かれた南半球の高峰。"},
+    {"name": "ROME", "region": "ITALY / SOUTHERN EUROPE", "type": "CITY", "lon": 12.4922, "lat": 41.8902, "altitude": 35.0, "range": 1800, "heading": -45, "pitch": -65, "landmark": "コロッセオ", "description": "楕円形の円形闘技場と古代ローマの遺跡。"},
+    {"name": "CAPE TOWN", "region": "SOUTH AFRICA / ATLANTIC", "type": "NATURE", "lon": 18.4107, "lat": -33.9628, "altitude": 1085.0, "range": 11000, "heading": -65, "pitch": -50, "landmark": "テーブルマウンテン", "description": "平らな山頂と大西洋の海岸線。"},
+    {"name": "SYDNEY", "region": "AUSTRALIA / NEW SOUTH WALES", "type": "CITY", "lon": 151.2153, "lat": -33.8568, "altitude": 10.0, "range": 2600, "heading": 30, "pitch": -65, "landmark": "シドニー・オペラハウス", "description": "白い屋根と港、ハーバーブリッジ。"},
+    {"name": "ULURU", "region": "AUSTRALIA / NORTHERN TERRITORY", "type": "NATURE", "lon": 131.0369, "lat": -25.3444, "altitude": 860.0, "range": 9000, "heading": -30, "pitch": -55, "landmark": "ウルル", "description": "赤い大地に浮かぶ巨大な一枚岩。"},
+    {"name": "SAN FRANCISCO", "region": "UNITED STATES / CALIFORNIA", "type": "CITY", "lon": -122.4783, "lat": 37.8199, "altitude": 10.0, "range": 7000, "heading": 45, "pitch": -60, "landmark": "ゴールデンゲートブリッジ", "description": "海峡に架かる橋と湾の入口。"},
+    {"name": "YOSEMITE", "region": "UNITED STATES / CALIFORNIA", "type": "NATURE", "lon": -119.5332, "lat": 37.7459, "altitude": 2695.0, "range": 12000, "heading": 40, "pitch": -50, "landmark": "ハーフドーム", "description": "氷河が削った谷と花崗岩の岩壁。"},
+    {"name": "AGRA", "region": "INDIA / UTTAR PRADESH", "type": "CITY", "lon": 78.0421, "lat": 27.1751, "altitude": 170.0, "range": 1800, "heading": 0, "pitch": -70, "landmark": "タージ・マハル", "description": "白い霊廟と左右対称の庭園。"},
+    {"name": "VICTORIA FALLS", "region": "ZAMBIA & ZIMBABWE / AFRICA", "type": "NATURE", "lon": 25.8572, "lat": -17.9243, "altitude": 900.0, "range": 6500, "heading": 25, "pitch": -65, "landmark": "ビクトリアの滝", "description": "大河が細い峡谷へ落ち込む境界。"},
+    {"name": "GIZA", "region": "EGYPT / GREATER CAIRO", "type": "CITY", "lon": 31.1342, "lat": 29.9792, "altitude": 60.0, "range": 2500, "heading": 35, "pitch": -65, "landmark": "ギザの大ピラミッド", "description": "砂漠と市街地の境に並ぶピラミッド。"},
+    {"name": "BORA BORA", "region": "FRENCH POLYNESIA / PACIFIC", "type": "NATURE", "lon": -151.7415, "lat": -16.5004, "altitude": 727.0, "range": 18000, "heading": -30, "pitch": -65, "landmark": "ボラボラ島とラグーン", "description": "サンゴ礁が描く青い環。"},
+    {"name": "BARCELONA", "region": "SPAIN / CATALONIA", "type": "CITY", "lon": 2.1744, "lat": 41.4036, "altitude": 30.0, "range": 2000, "heading": 35, "pitch": -65, "landmark": "サグラダ・ファミリア", "description": "聖堂を囲む八角形の街区。"},
+    {"name": "BLUE HOLE", "region": "BELIZE / CARIBBEAN", "type": "NATURE", "lon": -87.5347, "lat": 17.316, "altitude": 0.0, "range": 2200, "heading": 20, "pitch": -80, "landmark": "グレート・ブルーホール", "description": "サンゴ礁に開いた、深い青の円。"},
+    {"name": "VENICE", "region": "ITALY / ADRIATIC", "type": "CITY", "lon": 12.3378, "lat": 45.4343, "altitude": 5.0, "range": 2000, "heading": -25, "pitch": -65, "landmark": "サン・マルコ広場", "description": "大運河とラグーンに囲まれた広場。"},
+    {"name": "SANTORINI", "region": "GREECE / AEGEAN", "type": "NATURE", "lon": 25.3753, "lat": 36.4618, "altitude": 150.0, "range": 7000, "heading": 30, "pitch": -65, "landmark": "イアとカルデラ", "description": "断崖に沿う白い集落と火山の海。"},
+    {"name": "LONDON", "region": "UNITED KINGDOM / ENGLAND", "type": "CITY", "lon": -0.0754, "lat": 51.5055, "altitude": 10.0, "range": 2200, "heading": 35, "pitch": -65, "landmark": "タワーブリッジ", "description": "テムズ川とロンドン塔を結ぶ風景。"},
+    {"name": "NIAGARA", "region": "CANADA & UNITED STATES", "type": "NATURE", "lon": -79.0747, "lat": 43.0799, "altitude": 170.0, "range": 3500, "heading": -30, "pitch": -65, "landmark": "ホースシュー滝", "description": "馬蹄形に曲がる滝と川の流れ。"},
+    {"name": "KYOTO", "region": "JAPAN / KANSAI", "type": "CITY", "lon": 135.785, "lat": 34.9949, "altitude": 100.0, "range": 1600, "heading": -35, "pitch": -65, "landmark": "清水寺", "description": "東山の緑と寺院、京都の街並み。"},
+    {"name": "TWELVE APOSTLES", "region": "AUSTRALIA / VICTORIA", "type": "NATURE", "lon": 143.1051, "lat": -38.6657, "altitude": 50.0, "range": 5500, "heading": 30, "pitch": -65, "landmark": "十二使徒の海食柱", "description": "南極海の波が削った海岸の岩柱。"},
+    {"name": "ANGKOR", "region": "CAMBODIA / SIEM REAP", "type": "CITY", "lon": 103.867, "lat": 13.4125, "altitude": 65.0, "range": 3000, "heading": 0, "pitch": -70, "landmark": "アンコール・ワット", "description": "大きな濠に囲まれた寺院の幾何学。"},
+    {"name": "MILFORD SOUND", "region": "NEW ZEALAND / FIORDLAND", "type": "NATURE", "lon": 167.9234, "lat": -44.6158, "altitude": 1692.0, "range": 13000, "heading": 35, "pitch": -55, "landmark": "ミトレピークとフィヨルド", "description": "切り立つ山と深く入り込んだ海。"},
+    {"name": "MONT SAINT MICHEL", "region": "FRANCE / NORMANDY", "type": "CITY", "lon": -1.5115, "lat": 48.6361, "altitude": 80.0, "range": 2200, "heading": -25, "pitch": -65, "landmark": "モン・サン・ミシェル", "description": "干潟に浮かぶ修道院の島。"},
+    {"name": "HORSESHOE BEND", "region": "UNITED STATES / ARIZONA", "type": "NATURE", "lon": -111.5104, "lat": 36.8791, "altitude": 1300.0, "range": 4500, "heading": 30, "pitch": -70, "landmark": "ホースシューベンド", "description": "砂岩の台地を馬蹄形に巡る川。"},
+    {"name": "BEIJING", "region": "CHINA / NORTH CHINA", "type": "CITY", "lon": 116.3972, "lat": 39.9163, "altitude": 50.0, "range": 3000, "heading": 0, "pitch": -70, "landmark": "紫禁城", "description": "中軸線に沿って並ぶ宮殿と中庭。"},
+    {"name": "MOUNT ETNA", "region": "ITALY / SICILY", "type": "NATURE", "lon": 14.9994, "lat": 37.751, "altitude": 3350.0, "range": 15000, "heading": -25, "pitch": -55, "landmark": "エトナ山の山頂火口", "description": "溶岩の色と火口群が描く火山の表情。"},
+    {"name": "WASHINGTON", "region": "UNITED STATES / DISTRICT OF COLUMBIA", "type": "CITY", "lon": -77.0353, "lat": 38.8895, "altitude": 10.0, "range": 3500, "heading": 0, "pitch": -70, "landmark": "ワシントン記念塔", "description": "ナショナル・モールの芝生と反射池。"},
+    {"name": "NAMIB", "region": "NAMIBIA / NAMIB DESERT", "type": "NATURE", "lon": 15.2919, "lat": -24.7606, "altitude": 600.0, "range": 6500, "heading": 35, "pitch": -70, "landmark": "デッドフレイ", "description": "赤い砂丘に囲まれた白い窪地。"}
   ];
 
   function loadConfig() {
@@ -56,6 +80,7 @@
   document.body.classList.toggle('hide-hud', bare || !config.labels);
 
   let viewer;
+  let terrainActive = false;
   const runtime = {
     stage: 'globe', stageElapsed: 0, stageDuration: 5.5,
     transition: null, pose: null, pendingIndex: null, manualSkip: false, paused: false, hiddenPause: false,
@@ -68,12 +93,12 @@
   function saveConfig() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); } catch (_) {} }
   function placeAt(i) { return PLACES[runtime.sequence[(i + runtime.sequence.length) % runtime.sequence.length]]; }
   function inRadians(deg) { return C.Math.toRadians(deg); }
-  function cartesian(target) { return C.Cartesian3.fromDegrees(target.lon, target.lat, target.altitude); }
+  function cartesian(target) { return C.Cartesian3.fromDegrees(target.lon, target.lat, terrainActive ? target.altitude : 0); }
   function targetHpr(target, heading) {
     return new C.HeadingPitchRange(inRadians(heading), inRadians(target.pitch), target.range);
   }
   function phaseDuration(name) {
-    const base = { globe: 6, approach: 13, near: 15, depart: 9 }[name] || 10;
+    const base = { globe: 6, align: 9, approach: 16, near: 15, depart: 9 }[name] || 10;
     return base / config.speed;
   }
   function formatCoord(value, positive, negative) {
@@ -93,12 +118,12 @@
     $('destination-region').textContent = target.region;
     $('destination-title').textContent = target.name;
     $('destination-title').classList.toggle('long',target.name.length >= 11);
-    $('destination-description').textContent = target.description;
+    $('destination-description').textContent = `${target.landmark} — ${target.description}`;
     $('coordinates').textContent = `${formatCoord(target.lat, 'N', 'S')}   ${formatCoord(target.lon, 'E', 'W')}`;
     $('next-text').textContent = `NEXT DESTINATION · ${placeAt(runtime.index + 1).name}`;
   }
   function updateUI() {
-    const label = {globe: 'ORBITING THE EARTH', approach: 'APPROACHING DESTINATION', near: 'EXPLORING THE LANDSCAPE', depart: 'RETURNING TO ORBIT'}[runtime.stage];
+    const label = {globe: 'ORBITING THE EARTH', align: 'MOVING ABOVE DESTINATION', approach: 'APPROACHING DESTINATION', near: 'EXPLORING THE LANDSCAPE', depart: 'RETURNING TO ORBIT'}[runtime.stage];
     $('phase-text').textContent = runtime.paused ? 'FLIGHT PAUSED' : label;
     $('timeline-progress').style.width = `${clamp(runtime.stageElapsed / Math.max(.1,runtime.stageDuration),0,1) * 100}%`;
     $('pause-icon').hidden = runtime.paused;
@@ -140,6 +165,13 @@
   function globePose(lon,lat) {
     return makePose(C.Cartesian3.fromDegrees(lon,lat,ORBIT_ALTITUDE),C.Cartesian3.ZERO,axesAt(lon,lat).north);
   }
+  function overheadPose(target) {
+    const a=axesAt(target.lon,target.lat), h=inRadians(target.heading);
+    const up=C.Cartesian3.add(
+      C.Cartesian3.multiplyByScalar(a.north,Math.cos(h),new C.Cartesian3()),
+      C.Cartesian3.multiplyByScalar(a.east,Math.sin(h),new C.Cartesian3()),new C.Cartesian3());
+    return makePose(C.Cartesian3.fromDegrees(target.lon,target.lat,ORBIT_ALTITUDE),cartesian(target),up);
+  }
   function nearPose(target,heading) {
     const a=axesAt(target.lon,target.lat),h=inRadians(heading),p=inRadians(target.pitch);
     const horizontal=Math.cos(p)*target.range;
@@ -163,7 +195,7 @@
   function greatCircle(a,b,t) {
     const d=clamp(C.Cartesian3.dot(a,b),-1,1);
     if(d>.9999)return unit(C.Cartesian3.lerp(a,b,t,new C.Cartesian3()));
-    if(d<-.9999){
+    if(d<-1+1e-12){
       let axis=C.Cartesian3.cross(a,C.Cartesian3.UNIT_Z,new C.Cartesian3());
       if(C.Cartesian3.magnitudeSquared(axis)<1e-8)axis=C.Cartesian3.cross(a,C.Cartesian3.UNIT_X,new C.Cartesian3());
       const tangent=unit(axis);
@@ -182,6 +214,18 @@
     if(progress<=0)return flight.from;
     if(progress>=1)return flight.to;
     const t=smootherStep(progress);
+    if(flight.kind==='approach') {
+      // Arrive overhead first, then keep the destination centered throughout the descent.
+      // Introduce the small sightseeing offset only near the end, not across continents.
+      const focus=flight.to.focus;
+      const start=C.Cartesian3.subtract(flight.from.position,focus,new C.Cartesian3());
+      const end=C.Cartesian3.subtract(flight.to.position,focus,new C.Cartesian3());
+      const r0=C.Cartesian3.magnitude(start),r1=C.Cartesian3.magnitude(end);
+      const range=Math.exp((1-t)*Math.log(r0)+t*Math.log(r1));
+      const tilt=smootherStep((progress-.65)/.35);
+      const offset=C.Cartesian3.multiplyByScalar(greatCircle(unit(start),unit(end),tilt),range,new C.Cartesian3());
+      return makePose(C.Cartesian3.add(focus,offset,new C.Cartesian3()),focus,flight.from.up);
+    }
     const c0=C.Cartographic.fromCartesian(flight.from.position);
     const c1=C.Cartographic.fromCartesian(flight.to.position);
     const a=axesAt(C.Math.toDegrees(c0.longitude),C.Math.toDegrees(c0.latitude)).up;
@@ -207,8 +251,13 @@
     return orientPose(position,focus,direction,upHint);
   }
   function beginApproach(seconds=phaseDuration('approach')){
-    runtime.transition={kind:'approach',from:runtime.pose,to:nearPose(placeAt(runtime.index),placeAt(runtime.index).heading)};
-    setStage('approach',Math.max(.5,seconds));
+    const target=placeAt(runtime.index);
+    const c=C.Cartographic.fromCartesian(runtime.pose.position);
+    const from=axesAt(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude)).up;
+    const angle=Math.acos(clamp(C.Cartesian3.dot(from,axesAt(target.lon,target.lat).up),-1,1));
+    runtime.transition={kind:'align',from:runtime.pose,to:overheadPose(target),approachSeconds:seconds};
+    // Longer routes get more time; the altitude stays at the orbital level.
+    setStage('align',(4+8*angle/Math.PI)/config.speed);
   }
   function beginDepart(seconds=phaseDuration('depart')){
     const c=C.Cartographic.fromCartesian(runtime.pose.position);
@@ -218,10 +267,14 @@
     setStage('depart',Math.max(.5,seconds));
   }
   function completeTransition(){
-    const kind=runtime.transition.kind;
-    setPose(runtime.transition.to);
+    const flight=runtime.transition,kind=flight.kind;
+    setPose(flight.to);
     runtime.transition=null;
-    if(kind==='approach'){
+    if(kind==='align'){
+      const target=placeAt(runtime.index);
+      runtime.transition={kind:'approach',from:runtime.pose,to:nearPose(target,target.heading)};
+      setStage('approach',Math.max(.5,flight.approachSeconds));
+    }else if(kind==='approach'){
       runtime.nearHeading=placeAt(runtime.index).heading;
       setStage('near');
     }else{
@@ -256,7 +309,7 @@
     if(runtime.stage==='globe'){
       runtime.index=index;runtime.pendingIndex=null;
       updateDestination();
-      beginApproach(Math.max(4,8/config.speed));
+      beginApproach();
     }else{
       runtime.pendingIndex=index;
       if(runtime.stage!=='depart')beginDepart(Math.max(4,6/config.speed));
@@ -322,6 +375,8 @@
     const msg = $('terrain-message');
     if (!config.terrain) {
       viewer.terrainProvider = new C.EllipsoidTerrainProvider();
+      terrainActive = false;
+      if(runtime.pose) beginDepart();
       msg.textContent = '地形を無効にしました。衛星画像は引き続き表示します。';
       return;
     }
@@ -336,11 +391,15 @@
       C.Ion.defaultAccessToken = config.ionToken.trim();
       const terrain = await C.CesiumTerrainProvider.fromIonAssetId(TERRAIN_ASSET_ID, {requestVertexNormals:true});
       viewer.terrainProvider = terrain;
+      terrainActive = true;
+      if(runtime.pose) beginDepart();
       msg.textContent = '3D地形を有効にしました。山岳地帯で立体感が増します。';
       showToast('Cesium World Terrain を有効にしました。');
     } catch (error) {
       console.error('Cesium terrain unavailable', error);
       viewer.terrainProvider = new C.EllipsoidTerrainProvider();
+      terrainActive = false;
+      if(runtime.pose) beginDepart();
       msg.textContent = 'トークンまたは通信の問題で地形を読み込めませんでした。許可されたアセットを確認してください。';
       showToast('3D地形を読み込めませんでした。平面地球で続行します。');
     }
