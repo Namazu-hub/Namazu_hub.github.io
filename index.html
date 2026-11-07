@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <link rel="preconnect" href="https://services.arcgisonline.com" crossorigin />
   <link href="https://cdn.jsdelivr.net/npm/cesium@1.147.0/Build/Cesium/Widgets/widgets.css" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=4" />
   <script src="https://cdn.jsdelivr.net/npm/cesium@1.147.0/Build/Cesium/Cesium.js" defer></script>
-  <script src="./app.js?v=3" defer></script>
+  <script src="./app.js?v=4" defer></script>
 </head>
 <body>
   <div id="globe" role="img" aria-label="地球の衛星画像を描画する3D地球儀"></div>
@@ -29,7 +29,7 @@
   <div id="app" class="app is-loading">
     <header class="top-bar">
       <div class="brand"><span class="brand-icon">◌</span><span>ATLAS <span class="brand-lite">/ EARTH IN MOTION</span></span></div>
-      <div class="top-right"><span class="live-pulse"></span><span class="top-label">LIVE PLANET</span><span class="top-separator"></span><span id="local-time" class="top-time">--:-- UTC</span></div>
+      <div class="top-right"><span class="live-pulse"></span><span id="scene-mode-label" class="top-label">PREPARING 3D</span><span class="top-separator"></span><span id="local-time" class="top-time">--:-- UTC</span></div>
     </header>
 
     <main class="lower-third" aria-live="polite">
@@ -44,7 +44,7 @@
 
     <div class="timeline-area">
       <div class="timeline-head"><span id="phase-text">ORBITING THE EARTH</span><span id="next-text">NEXT DESTINATION · MT. FUJI</span></div>
-      <div class="timeline-rail"><span id="timeline-progress"></span></div>
+      <div id="journey-progress" class="timeline-rail" role="progressbar" aria-label="この地点の旅程" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="timeline-progress"></span></div>
     </div>
 
     <div class="controls" aria-label="壁紙操作">
@@ -81,18 +81,21 @@
       <label class="check-row"><input id="show-labels" type="checkbox" checked/><span>地名と情報を表示</span></label>
       <label class="check-row"><input id="shuffle" type="checkbox"/><span>訪問順をシャッフル</span></label>
       <div class="settings-rule"></div>
-      <label class="setting-label" for="ion-token">Cesium ion トークン <span>任意</span></label>
-      <input id="ion-token" type="password" spellcheck="false" autocomplete="off" placeholder="立体地形を利用する場合のみ" />
-      <label class="check-row"><input id="terrain" type="checkbox"/><span>3D地形を有効にする（トークン必須）</span></label>
-      <button id="apply-terrain" class="apply-button" type="button">地形設定を適用</button>
-      <p id="terrain-message" class="terrain-message">トークンはこの端末内に保存され、GitHubには送信されません。</p>
+      <label class="setting-label" for="scene-mode">地球の表示</label>
+      <select id="scene-mode"><option value="photo" selected>Google 写真ベース3D（おすすめ）</option><option value="terrain">3D地形＋OSM建物</option><option value="imagery">衛星写真のみ</option></select>
+      <label class="setting-label" for="ion-token">Cesium ion トークン <span>3D表示に必要</span></label>
+      <input id="ion-token" type="password" spellcheck="false" autocomplete="off" placeholder="この端末でトークンを入力" />
+      <button id="apply-terrain" class="apply-button" type="button">表示を適用</button>
+      <p id="terrain-message" class="terrain-message" role="status">3D表示の接続状態を確認しています。</p>
+      <p class="settings-footnote"><a href="https://ion.cesium.com/tokens" target="_blank" rel="noopener noreferrer">Cesium ionでトークンを取得 ↗</a><br />Google 3D Tilesを有効にしたアカウントのトークンを入力してください。利用枠・料金はCesium ionで確認できます。</p>
+      <p class="settings-footnote">トークンはこのブラウザ内に保存し、データ取得の認証に使用します。GitHubには保存しません。Livelyで使う場合はLively側でも設定してください。</p>
       <div class="settings-rule"></div>
       <p class="settings-footnote">Space: 停止・再開 / ← →: 移動 / H: 情報表示 / S: 設定 / F: 全画面</p>
       <p class="settings-footnote">Lively Wallpaper 用 URL: <code>?wallpaper=1</code></p>
     </aside>
 
     <div id="toast" class="toast" role="status"></div>
-    <div class="copyright">IMAGERY © ESRI & CONTRIBUTORS <span>·</span> POWERED BY CESIUMJS</div>
+    <div class="copyright"><span id="imagery-credit">IMAGERY © ESRI & CONTRIBUTORS</span> <span>·</span> POWERED BY CESIUMJS</div>
   </div>
   <noscript><div class="noscript">JavaScript を有効にしてください。CesiumJS は WebGL 対応ブラウザで動作します。</div></noscript>
 </body>

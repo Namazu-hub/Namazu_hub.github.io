@@ -6,6 +6,7 @@
   const qs = new URLSearchParams(window.location.search);
   const $ = (id) => document.getElementById(id);
   const TERRAIN_ASSET_ID = 1; // Cesium World Terrain; requires a permitted Cesium ion token.
+  const GOOGLE_3D_ASSET_ID = 2275207;
   const ESRI_WORLD_IMAGERY = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer';
   const STORAGE_KEY = 'atlas-wallpaper-v1';
 
@@ -63,7 +64,7 @@
       fps: [24, 30, 60].includes(Number(saved.fps)) ? Number(saved.fps) : 30,
       labels: typeof saved.labels === 'boolean' ? saved.labels : true,
       shuffle: Boolean(saved.shuffle),
-      terrain: Boolean(saved.terrain),
+      sceneMode: ['photo','terrain','imagery'].includes(saved.sceneMode) ? saved.sceneMode : 'photo',
       ionToken: typeof saved.ionToken === 'string' ? saved.ionToken : ''
     };
   }
@@ -81,8 +82,11 @@
 
   let viewer;
   let terrainActive = false;
+  let activeSceneMode = 'imagery';
+  let sceneTileset = null;
+  let sceneRequest = 0;
   const runtime = {
-    stage: 'globe', stageElapsed: 0, stageDuration: 5.5,
+    stage: 'globe', stageElapsed: 0, stageDuration: 5.5, chapterDurations: null,
     transition: null, pose: null, pendingIndex: null, manualSkip: false, paused: false, hiddenPause: false,
     index: 0, globeLongitude: 120, globeLatitude: 23, nearHeading: 0,
     lastFrame: 0, toastTimer: null, shuttingDown: false,
@@ -98,8 +102,39 @@
     return new C.HeadingPitchRange(inRadians(heading), inRadians(target.pitch), target.range);
   }
   function phaseDuration(name) {
-    const base = { globe: 6, align: 9, approach: 16, near: 15, depart: 9 }[name] || 10;
+    const base = { globe: 6, align: 9, approach: 16, near: 40, depart: 9 }[name] || 10;
     return base / config.speed;
+  }
+  const CHAPTER_STAGES = ['globe','align','approach','near','depart'];
+  function alignmentDuration(lon,lat) {
+    const target=placeAt(runtime.index);
+    const angle=Math.acos(clamp(C.Cartesian3.dot(axesAt(lon,lat).up,axesAt(target.lon,target.lat).up),-1,1));
+    return (4+8*angle/Math.PI)/config.speed;
+  }
+  function startChapter(globeSeconds=phaseDuration('globe')) {
+    // Plan the complete visit once so stage changes never reset the progress bar.
+    runtime.chapterDurations={
+      globe:globeSeconds,
+      align:alignmentDuration(runtime.globeLongitude+globeSeconds*1.1*config.speed,runtime.globeLatitude),
+      approach:phaseDuration('approach'), near:phaseDuration('near'), depart:phaseDuration('depart')
+    };
+  }
+  function chapterProgress() {
+    const plan=runtime.chapterDurations;
+    if(!plan)return 0;
+    const stageIndex=CHAPTER_STAGES.indexOf(runtime.stage);
+    const elapsed=CHAPTER_STAGES.slice(0,stageIndex).reduce((sum,key)=>sum+plan[key],0);
+    const fraction=clamp(runtime.stageElapsed/Math.max(.1,runtime.stageDuration),0,1);
+    const total=CHAPTER_STAGES.reduce((sum,key)=>sum+plan[key],0);
+    return clamp((elapsed+plan[runtime.stage]*fraction)/total,0,1);
+  }
+  function setSpeed(speed) {
+    const scale=config.speed/speed;
+    runtime.stageElapsed*=scale;
+    runtime.stageDuration*=scale;
+    if(runtime.chapterDurations)for(const key of CHAPTER_STAGES)runtime.chapterDurations[key]*=scale;
+    if(runtime.transition?.approachSeconds)runtime.transition.approachSeconds*=scale;
+    config.speed=speed;
   }
   function formatCoord(value, positive, negative) {
     return `${Math.abs(value).toFixed(4)}° ${value >= 0 ? positive : negative}`;
@@ -125,7 +160,10 @@
   function updateUI() {
     const label = {globe: 'ORBITING THE EARTH', align: 'MOVING ABOVE DESTINATION', approach: 'APPROACHING DESTINATION', near: 'EXPLORING THE LANDSCAPE', depart: 'RETURNING TO ORBIT'}[runtime.stage];
     $('phase-text').textContent = runtime.paused ? 'FLIGHT PAUSED' : label;
-    $('timeline-progress').style.width = `${clamp(runtime.stageElapsed / Math.max(.1,runtime.stageDuration),0,1) * 100}%`;
+    const progress=chapterProgress()*100;
+    $('timeline-progress').style.width = `${progress}%`;
+    $('journey-progress').setAttribute('aria-valuenow',String(Math.round(progress)));
+    $('journey-progress').setAttribute('aria-valuetext',`${placeAt(runtime.index).name} ${Math.round(progress)}%`);
     $('pause-icon').hidden = runtime.paused;
     $('play-icon').hidden = !runtime.paused;
     $('play-pause').setAttribute('aria-label', runtime.paused ? '再開' : '一時停止');
@@ -133,7 +171,7 @@
   function setStage(stage, duration) {
     runtime.stage = stage;
     runtime.stageElapsed = 0;
-    runtime.stageDuration = duration ?? phaseDuration(stage);
+    runtime.stageDuration = duration ?? runtime.chapterDurations?.[stage] ?? phaseDuration(stage);
     updateUI();
   }
   // A single world-coordinate camera timeline avoids jumps between chapters.
@@ -173,7 +211,8 @@
     return makePose(C.Cartesian3.fromDegrees(target.lon,target.lat,ORBIT_ALTITUDE),cartesian(target),up);
   }
   function nearPose(target,heading) {
-    const a=axesAt(target.lon,target.lat),h=inRadians(heading),p=inRadians(target.pitch);
+    const pitch=terrainActive && target.type==='CITY' ? -45 : target.pitch;
+    const a=axesAt(target.lon,target.lat),h=inRadians(heading),p=inRadians(pitch);
     const horizontal=Math.cos(p)*target.range;
     const offset=C.Cartesian3.add(
       C.Cartesian3.add(
@@ -250,14 +289,12 @@
     const upHint=world(C.Cartesian3.lerp(local(flight.from.up,startAxes),local(flight.to.up,endAxes),t,new C.Cartesian3()),pathAxes);
     return orientPose(position,focus,direction,upHint);
   }
-  function beginApproach(seconds=phaseDuration('approach')){
+  function beginApproach(seconds=runtime.chapterDurations?.approach ?? phaseDuration('approach')){
     const target=placeAt(runtime.index);
     const c=C.Cartographic.fromCartesian(runtime.pose.position);
-    const from=axesAt(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude)).up;
-    const angle=Math.acos(clamp(C.Cartesian3.dot(from,axesAt(target.lon,target.lat).up),-1,1));
     runtime.transition={kind:'align',from:runtime.pose,to:overheadPose(target),approachSeconds:seconds};
     // Longer routes get more time; the altitude stays at the orbital level.
-    setStage('align',(4+8*angle/Math.PI)/config.speed);
+    setStage('align',runtime.chapterDurations?.align ?? alignmentDuration(C.Math.toDegrees(c.longitude),C.Math.toDegrees(c.latitude)));
   }
   function beginDepart(seconds=phaseDuration('depart')){
     const c=C.Cartographic.fromCartesian(runtime.pose.position);
@@ -285,7 +322,8 @@
         runtime.index=(runtime.index+1)%PLACES.length;
       }
       updateDestination();
-      setStage('globe',runtime.manualSkip?2.5/config.speed:phaseDuration('globe'));
+      startChapter(runtime.manualSkip?2.5/config.speed:phaseDuration('globe'));
+      setStage('globe');
       runtime.manualSkip=false;
     }
   }
@@ -309,6 +347,7 @@
     if(runtime.stage==='globe'){
       runtime.index=index;runtime.pendingIndex=null;
       updateDestination();
+      startChapter(0);
       beginApproach();
     }else{
       runtime.pendingIndex=index;
@@ -345,7 +384,7 @@
       setPose(globePose(runtime.globeLongitude,runtime.globeLatitude));
       if(runtime.stageElapsed>=runtime.stageDuration)beginApproach();
     }else if(runtime.stage==='near'){
-      runtime.nearHeading+=dt*4.5*config.speed;
+      runtime.nearHeading+=dt*2*config.speed;
       setPose(nearPose(placeAt(runtime.index),runtime.nearHeading));
       if(runtime.stageElapsed>=runtime.stageDuration)beginDepart();
     }else if(runtime.transition){
@@ -371,37 +410,80 @@
       }
     }
   }
-  async function setTerrain() {
-    const msg = $('terrain-message');
-    if (!config.terrain) {
-      viewer.terrainProvider = new C.EllipsoidTerrainProvider();
-      terrainActive = false;
-      if(runtime.pose) beginDepart();
-      msg.textContent = '地形を無効にしました。衛星画像は引き続き表示します。';
-      return;
-    }
-    if (!config.ionToken.trim()) {
-      config.terrain = false;
-      $('terrain').checked = false;
-      msg.textContent = '3D地形には Cesium ion トークンが必要です。';
-      return;
-    }
-    msg.textContent = 'Cesium World Terrain に接続しています…';
+  function sceneLabel() {
+    return {photo:'GOOGLE PHOTOREALISTIC 3D',terrain:'3D TERRAIN + BUILDINGS',imagery:'SATELLITE VIEW'}[activeSceneMode];
+  }
+  function refreshSceneCamera() {
+    // Preserve the current visit/bar when a data source finishes loading mid-flight.
+    // Orbiting poses do not depend on terrain; close views retreat before returning.
+    if(runtime.stage==='globe')return;
+    runtime.pendingIndex=runtime.pendingIndex ?? runtime.index;
+    if(runtime.stage!=='depart')beginDepart();
+  }
+  async function applySceneMode() {
+    const request=++sceneRequest, mode=config.sceneMode, token=config.ionToken.trim();
+    const msg=$('terrain-message'),button=$('apply-terrain');
+    let candidate=null;
+    button.disabled=true;
     try {
-      C.Ion.defaultAccessToken = config.ionToken.trim();
-      const terrain = await C.CesiumTerrainProvider.fromIonAssetId(TERRAIN_ASSET_ID, {requestVertexNormals:true});
-      viewer.terrainProvider = terrain;
-      terrainActive = true;
-      if(runtime.pose) beginDepart();
-      msg.textContent = '3D地形を有効にしました。山岳地帯で立体感が増します。';
-      showToast('Cesium World Terrain を有効にしました。');
-    } catch (error) {
-      console.error('Cesium terrain unavailable', error);
-      viewer.terrainProvider = new C.EllipsoidTerrainProvider();
-      terrainActive = false;
-      if(runtime.pose) beginDepart();
-      msg.textContent = 'トークンまたは通信の問題で地形を読み込めませんでした。許可されたアセットを確認してください。';
-      showToast('3D地形を読み込めませんでした。平面地球で続行します。');
+      if(mode!=='imagery' && !token) {
+        msg.textContent='3D表示には Cesium ion トークンが必要です。下のリンクから取得し、この端末で入力してください。現在は '+sceneLabel()+' です。';
+        $('scene-mode-label').textContent=activeSceneMode==='imagery'?'3D SETUP REQUIRED':sceneLabel();
+        showToast('設定（S）でトークンを入力すると、建物を含む3D表示を有効にできます。');
+        return false;
+      }
+      msg.textContent=mode==='imagery'?'衛星写真へ切り替えています…':'3Dデータに接続しています…';
+      let terrain=new C.EllipsoidTerrainProvider();
+      if(mode!=='imagery') C.Ion.defaultAccessToken=token;
+      if(mode==='photo') {
+        // Resolve fresh credentials on every attempt. Cesium 1.147's Google helper
+        // caches even a rejected ion request, preventing recovery after token edits.
+        // IonResource retains Google's required credits. This tour uses no geocoder.
+        const resource=await C.IonResource.fromAssetId(GOOGLE_3D_ASSET_ID,{accessToken:token});
+        if(request!==sceneRequest || runtime.shuttingDown)return false;
+        candidate=await C.Cesium3DTileset.fromUrl(resource,
+          {maximumScreenSpaceError:12,cacheBytes:268435456,maximumCacheOverflowBytes:134217728,enableCollision:true});
+      } else if(mode==='terrain') {
+        terrain=await C.CesiumTerrainProvider.fromIonAssetId(TERRAIN_ASSET_ID,{requestVertexNormals:true});
+        if(request!==sceneRequest || runtime.shuttingDown)return false;
+        candidate=await C.createOsmBuildingsAsync();
+      }
+      if(request!==sceneRequest || runtime.shuttingDown) {
+        candidate?.destroy();
+        return false;
+      }
+      if(candidate) {
+        viewer.scene.primitives.add(candidate);
+        const installed=candidate;
+        installed.tileFailed.addEventListener(()=>{
+          if(sceneTileset!==installed || runtime.shuttingDown)return;
+          // Never log raw service errors: a failed request URL may contain the token.
+          $('terrain-message').textContent='一部の3Dデータを読み込めません。通信状況・トークン権限・利用上限を確認してください。';
+        });
+      }
+      if(sceneTileset)viewer.scene.primitives.remove(sceneTileset);
+      sceneTileset=candidate;
+      viewer.terrainProvider=terrain;
+      // Google supplies its own global surface; the Esri globe must not cover it.
+      viewer.scene.globe.show=mode!=='photo';
+      viewer.scene.globe.depthTestAgainstTerrain=mode==='terrain';
+      terrainActive=mode!=='imagery';
+      activeSceneMode=mode;
+      $('scene-mode-label').textContent=sceneLabel();
+      $('imagery-credit').textContent=mode==='photo'?'GOOGLE MAPS · 3D': 'IMAGERY © ESRI & CONTRIBUTORS';
+      msg.textContent=mode==='photo'?'Googleの写真ベース3D表示を有効にしました。細部は順次読み込まれます。地域により3Dの収録範囲・精細度は異なります。':mode==='terrain'?'立体地形とOSMの建物を有効にしました。':'衛星写真を表示しています。';
+      refreshSceneCamera();
+      showToast(mode==='imagery'?'衛星写真へ切り替えました。':'3D表示を有効にしました。');
+      return true;
+    } catch (_) {
+      if(candidate && candidate!==sceneTileset && !candidate.isDestroyed())candidate.destroy();
+      if(request!==sceneRequest || runtime.shuttingDown)return false;
+      msg.textContent='3Dに接続できませんでした。トークンの権限と、Cesium ion側のGoogle 3D Tiles有効化を確認してください。現在は '+sceneLabel()+' です。';
+      $('scene-mode-label').textContent=sceneLabel();
+      showToast('3Dの接続に失敗しました。現在の表示で続けます。');
+      return false;
+    } finally {
+      if(request===sceneRequest && !runtime.shuttingDown)button.disabled=false;
     }
   }
   function openSettings(open) {
@@ -423,11 +505,11 @@
     $('show-labels').checked = config.labels;
     $('shuffle').checked = config.shuffle;
     $('ion-token').value = config.ionToken;
-    $('terrain').checked = config.terrain;
+    $('scene-mode').value = config.sceneMode;
     $('speed-value').textContent = `${config.speed.toFixed(2).replace(/0$/,'')}×`;
     $('quality-value').textContent = `${Math.round(config.quality*100)}%`;
     $('speed').addEventListener('input', e => {
-      config.speed = Number(e.target.value);
+      setSpeed(Number(e.target.value));
       $('speed-value').textContent = `${config.speed.toFixed(2).replace(/0$/,'')}×`;
       saveConfig();
     });
@@ -440,10 +522,10 @@
     $('show-labels').addEventListener('change',e => {config.labels = e.target.checked;runtime.manualHud = !config.labels;applyVisualConfig();saveConfig();});
     $('shuffle').addEventListener('change',e=>{config.shuffle = e.target.checked;shuffleOrder();saveConfig();});
     $('apply-terrain').addEventListener('click',async()=>{
-      config.terrain = $('terrain').checked;
+      config.sceneMode = $('scene-mode').value;
       config.ionToken = $('ion-token').value.trim();
       saveConfig();
-      await setTerrain();
+      await applySceneMode();
       saveConfig();
     });
     $('play-pause').addEventListener('click',togglePause);
@@ -494,7 +576,7 @@
     }
     try {
       // Do not silently use an embedded Cesium ion default access token.
-      if (config.ionToken) C.Ion.defaultAccessToken = config.ionToken;
+      C.Ion.defaultAccessToken = config.ionToken || '';
       viewer = new C.Viewer('globe', {
         baseLayer: false,
         baseLayerPicker: false,
@@ -524,14 +606,13 @@
       renderUtcClock();
       setInterval(renderUtcClock,30000);
       await setupImagery();
-      if (config.terrain && config.ionToken) {
-        // Avoid blocking the wallpaper while the optional terrain loads.
-        setTerrain();
-      }
       $('loading').classList.add('done');
       $('app').classList.remove('is-loading');
-      setStage('globe',5.5/config.speed);
+      startChapter(5.5/config.speed);
+      setStage('globe');
       requestAnimationFrame(animateFrame);
+      // Keep the tour responsive while authenticated 3D data is loading.
+      applySceneMode();
     } catch (error) {
       console.error('ATLAS initialization failed:',error);
       $('loading-copy').textContent = '3D表示に失敗しました。WebGL と GPU 設定を確認してください。';
